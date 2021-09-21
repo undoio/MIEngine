@@ -12,7 +12,7 @@ stages:
       JobTemplate:
       - template: ../templates/VSCode-release.template.yml
 
-- stage: OSX_CodeSign
+- stage: OSX_x64_CodeSign
   dependsOn: [Windows]
   jobs:
   - template: ./jobs/MSHosted-OSX.job.yml
@@ -20,13 +20,39 @@ stages:
       DisplayName: 'OSX Sign/Harden'
       JobTemplate:
       - template: ../templates/VSCode-codesign-osx.template.yml
+        parameters:
+          RuntimeID: 'osx-x64'
 
-- stage: OSX_ESRPSign
-  dependsOn: [OSX_CodeSign]
+- stage: OSX_x64_ESRPSign
+  dependsOn: [OSX_x64_CodeSign]
   jobs:
   - template: ./jobs/VSEngSS-MicroBuild2019-1ES.job.yml
     parameters:
       DisplayName: 'OSX Sign/Harden'
       JobTemplate:
       - template: ../templates/VSCode-esrp-sign-osx.template.yml
+        parameters:
+          RuntimeID: 'osx-x64'
+
+- stage: OSX_ARM64_CodeSign
+  dependsOn: [Windows]
+  jobs:
+  - template: ./jobs/MSHosted-OSX.job.yml
+    parameters:
+      DisplayName: 'OSX Sign/Harden'
+      JobTemplate:
+      - template: ../templates/VSCode-codesign-osx.template.yml
+        parameters:
+          RuntimeID: 'osx-arm64'
+
+- stage: OSX_ARM64_ESRPSign
+  dependsOn: [OSX_ARM64_CodeSign]
+  jobs:
+  - template: ./jobs/VSEngSS-MicroBuild2019-1ES.job.yml
+    parameters:
+      DisplayName: 'OSX Sign/Harden'
+      JobTemplate:
+      - template: ../templates/VSCode-esrp-sign-osx.template.yml
+        parameters:
+          RuntimeID: 'osx-arm64'
 ...
