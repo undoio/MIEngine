@@ -25,6 +25,7 @@ namespace MICore
         NoValues = 0,
         AllValues = 1,
         SimpleValues = 2,
+        ScalarValues = 3, // Only available if SupportsScalarValues()
     }
 
     [Flags]
@@ -696,6 +697,23 @@ namespace MICore
         public virtual bool SupportsBreakpointChecksums()
         {
             return false;
+        }
+
+        /// <summary>
+        /// Get the set of features supported by the underlying debugger.
+        /// </summary>
+        public virtual Task<HashSet<string>> GetFeatures()
+        {
+            return Task.FromResult(new HashSet<string>());
+        }
+
+        /// <summary>
+        /// True if the underlying debugger supports PrintValue.ScalarValues as an argument to
+        /// StackListLocals(), StackListArguments() and StackListVariables().
+        /// </summary>
+        public virtual Task<bool> SupportsScalarValues()
+        {
+            return Task.FromResult(false);
         }
         #endregion
     }

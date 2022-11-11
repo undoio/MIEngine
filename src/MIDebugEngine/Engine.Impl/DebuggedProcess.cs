@@ -52,6 +52,7 @@ namespace Microsoft.MIDebugEngine
         private IProcessSequence _childProcessHandler;
         private bool _deleteEntryPointBreakpoint;
         private string _entryPointBreakpoint = string.Empty;
+        private bool _supportsScalarValues = false; // Debugger supports PrintValue.ScalarValues?
 
         public DebuggedProcess(bool bLaunched, LaunchOptions launchOptions, ISampleEngineCallback callback, WorkerThread worker, BreakpointManager bpman, AD7Engine engine, HostConfigurationStore configStore, HostWaitLoop waitLoop = null) : base(launchOptions, engine.Logger)
         {
@@ -550,6 +551,8 @@ namespace Microsoft.MIDebugEngine
 
             try
             {
+                _supportsScalarValues = await this.MICommandFactory.SupportsScalarValues();
+
                 await this.MICommandFactory.EnableTargetAsyncOption();
 
                 await this.CheckCygwin(_launchOptions as LocalLaunchOptions);
@@ -1967,7 +1970,8 @@ namespace Microsoft.MIDebugEngine
         {
             List<SimpleVariableInformation> parameters = new List<SimpleVariableInformation>();
 
-            ValueListValue localAndParameters = await MICommandFactory.StackListVariables(PrintValue.SimpleValues, thread.Id, ctx.Level);
+            PrintValue printValue = _supportsScalarValues ? PrintValue.ScalarValues: PrintValue.SimpleValues;
+            ValueListValue localAndParameters = await MICommandFactory.StackListVariables(printValue, thread.Id, ctx.Level);
 
             foreach (var results in localAndParameters.Content.Where(r => r.TryFindString("arg") == "1"))
             {
@@ -1981,8 +1985,14 @@ namespace Microsoft.MIDebugEngine
         //NOTE: eval is not called
         public async Task<List<ArgumentList>> GetParameterInfoOnly(AD7Thread thread, bool values, bool types, uint low, uint high)
         {
-            // If values are requested, request simple values, otherwise we'll use -var-create to get the type of argument it is.
-            var frames = await MICommandFactory.StackListArguments(values ? PrintValue.SimpleValues : PrintValue.NoValues, thread.Id, low, high);
+            // If ScalarValues is supported, use it (even if values are not requested) as it gets
+            // types too, without the potential performance penalty of getting non-scalar values.
+            // Otherwise, If values are requested, use SimpleValues, otherwise the potential
+            // performance penalty is too high, so use NoValues and follow up with -var-create to
+            // get the types.
+            PrintValue printValue = _supportsScalarValues ? PrintValue.ScalarValues
+                : (values ? PrintValue.SimpleValues : PrintValue.NoValues);
+            var frames = await MICommandFactory.StackListArguments(printValue, thread.Id, low, high);
             List<ArgumentList> parameters = new List<ArgumentList>();
 
             foreach (var f in frames)
